@@ -146,55 +146,35 @@ http://localhost:3000
 
 ## Bước 5: Tạo tài khoản chủ cửa hàng đầu tiên
 
-Màn hình đăng nhập của app đã tắt nút tự tạo tài khoản để người lạ không tự đăng ký được.
+1. Mở app local.
+2. Bấm `Tạo tài khoản`.
+3. Nhập email và mật khẩu.
+4. Nếu Supabase yêu cầu xác nhận email, hãy mở email để xác nhận.
+5. Vào Supabase `SQL Editor`: mở project Supabase, nhìn menu trái, chọn `SQL Editor`, rồi bấm `New query`.
+6. Chạy lệnh này, đổi email thành email của bạn:
 
-Tạo tài khoản chủ cửa hàng trong Supabase:
-
-1. Vào Supabase project.
-2. Vào mục `Authentication`.
-3. Vào `Users`.
-4. Bấm `Add user` hoặc `Create user`.
-5. Nhập email và mật khẩu cho tài khoản chủ cửa hàng.
-6. Nếu Supabase có lựa chọn xác nhận email tự động, hãy bật để tài khoản dùng được ngay.
-7. Vào Supabase `SQL Editor`: mở project Supabase, nhìn menu trái, chọn `SQL Editor`, rồi bấm `New query`.
-8. Chạy lệnh này, đổi email thành email của bạn:
-
-```sql
-update public.profiles
-set role = 'owner', full_name = 'Chủ cửa hàng GD COMPUTER'
-where email = 'email-cua-ban@example.com';
+```	
 ```
 
-9. Đăng nhập app bằng tài khoản đó.
-10. Vào `Tài khoản` để quản lý nhân viên.
+7. Đăng nhập lại app.
+8. Vào `Tài khoản` để quản lý nhân viên.
 
-Gợi ý an toàn: trong Supabase Auth, tắt public signup nếu Supabase project đang cho phép đăng ký công khai. App đã ẩn nút tạo tài khoản, nhưng tắt signup trong Supabase mới là lớp chặn quan trọng nhất.
-
-## Bước 5.1: Tạo tài khoản nhân viên sau này
-
-1. Vào Supabase project.
-2. Vào `Authentication` -> `Users`.
-3. Bấm `Add user` hoặc `Create user`.
-4. Nhập email và mật khẩu nhân viên.
-5. Nhân viên mới mặc định là quyền `staff`.
-6. Nếu cần đổi tên, khóa tài khoản hoặc nâng quyền, đăng nhập app bằng tài khoản chủ cửa hàng rồi vào `Tài khoản`.
+Gợi ý an toàn: Sau khi tạo đủ tài khoản, vào Supabase Auth để tắt public signup nếu bạn không muốn người lạ tự đăng ký.
 
 ## Bước 6: Dùng app hằng ngày
 
 Quy trình đề xuất:
 
 1. Vào `Danh mục`, kiểm tra danh mục mặc định.
-2. Vào `Sản phẩm`, tạo sản phẩm với mã SKU rõ ràng. Có thể bấm `Tạo mã` để app gợi ý mã tự động.
-3. Nếu muốn có dữ liệu thử nhanh, vào `Sản phẩm` rồi bấm `Thêm 4 sản phẩm mẫu`.
-4. Cách dự phòng: mở `supabase/sample-products.sql`, copy vào Supabase SQL Editor và bấm `Run`.
-5. Nếu muốn ảnh, chỉ dán link ảnh vào `Link ảnh`; không upload ảnh lên Supabase.
-6. Vào `Nhà cung cấp`, thêm nơi nhập hàng.
-7. Vào `Nhập kho`, tạo phiếu nhập để tăng tồn kho.
-8. Vào `Khách hàng`, thêm khách quen.
-9. Vào `Bán hàng`, tạo đơn bán.
-10. Sau khi tạo đơn, app mở hóa đơn.
-11. Bấm `In / Lưu PDF` nếu cần in hoặc lưu PDF.
-12. Vào `Báo cáo` để xem doanh thu/lợi nhuận/tồn thấp.
+2. Vào `Sản phẩm`, tạo sản phẩm với mã SKU rõ ràng.
+3. Nếu muốn ảnh, chỉ dán link ảnh vào `Link ảnh`; không upload ảnh lên Supabase.
+4. Vào `Nhà cung cấp`, thêm nơi nhập hàng.
+5. Vào `Nhập kho`, tạo phiếu nhập để tăng tồn kho.
+6. Vào `Khách hàng`, thêm khách quen.
+7. Vào `Bán hàng`, tạo đơn bán.
+8. Sau khi tạo đơn, app mở hóa đơn.
+9. Bấm `In / Lưu PDF` nếu cần in hoặc lưu PDF.
+10. Vào `Báo cáo` để xem doanh thu/lợi nhuận/tồn thấp.
 
 ## Bước 7: Sửa thông tin cửa hàng trên hóa đơn
 

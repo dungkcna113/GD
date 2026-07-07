@@ -61,7 +61,7 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader title="Tài khoản" description="Chủ cửa hàng quản lý quyền nhân viên và trạng thái đăng nhập.">
-        <ShieldCheck size={28} color="#ef233c" />
+        <ShieldCheck size={28} color="#0f766e" />
       </PageHeader>
 
       {message && <div className="message success">{message}</div>}

@@ -29,6 +29,9 @@ $tables = @(
   "purchase_order_items",
   "sales_orders",
   "sales_order_items",
+  "cash_entries",
+  "repair_orders",
+  "repair_order_items",
   "stock_movements"
 )
 

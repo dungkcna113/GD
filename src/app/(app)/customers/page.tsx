@@ -5,12 +5,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Edit3, History, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { nextCode } from "@/lib/codes";
 import { dateTimeText, money } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { Customer, SalesOrder } from "@/lib/types";
 
 type CustomerForm = {
   id?: string;
+  code: string;
   name: string;
   phone: string;
   address: string;
@@ -18,6 +20,7 @@ type CustomerForm = {
 };
 
 const emptyForm: CustomerForm = {
+  code: "",
   name: "",
   phone: "",
   address: "",
@@ -39,13 +42,20 @@ export default function CustomersPage() {
     const keyword = search.trim().toLowerCase();
     if (!keyword) return customers;
     return customers.filter((customer) =>
-      [customer.name, customer.phone, customer.address].filter(Boolean).join(" ").toLowerCase().includes(keyword),
+      [customer.code, customer.name, customer.phone, customer.address]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword),
     );
   }, [customers, search]);
 
   async function loadCustomers() {
     setLoading(true);
-    const { data, error: loadError } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
+    const { data, error: loadError } = await supabase
+      .from("customers")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (loadError) setError(loadError.message);
     setCustomers((data as Customer[]) ?? []);
     setLoading(false);
@@ -75,6 +85,7 @@ export default function CustomersPage() {
   function editCustomer(customer: Customer) {
     setForm({
       id: customer.id,
+      code: customer.code ?? "",
       name: customer.name,
       phone: customer.phone ?? "",
       address: customer.address ?? "",
@@ -90,6 +101,7 @@ export default function CustomersPage() {
     setError(null);
 
     const payload = {
+      code: (form.code.trim() || nextCode("KH", customers.map((customer) => customer.code))).toUpperCase(),
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
@@ -128,14 +140,14 @@ export default function CustomersPage() {
 
   return (
     <>
-      <PageHeader title="Khách hàng" description="Lưu tên, số điện thoại, địa chỉ và xem lịch sử mua hàng." />
+      <PageHeader title="Khách hàng" description="Quản lý mã khách, thông tin liên hệ và lịch sử mua hàng." />
 
       <section className="split-layout">
         <div className="panel">
           <div className="panel-head">
             <div>
               <h2>{form.id ? "Sửa khách hàng" : "Thêm khách hàng"}</h2>
-              <p>Số điện thoại dùng để tìm nhanh khi tạo đơn hàng.</p>
+              <p>Mã khách sẽ tự tạo dạng KH-000001 nếu bạn để trống.</p>
             </div>
             {form.id && (
               <button className="soft-btn compact" onClick={() => setForm(emptyForm)}>
@@ -150,6 +162,14 @@ export default function CustomersPage() {
 
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-row">
+              <label>Mã khách</label>
+              <input
+                value={form.code}
+                onChange={(event) => setForm({ ...form, code: event.target.value })}
+                placeholder="Tự tạo nếu để trống"
+              />
+            </div>
+            <div className="form-row">
               <label>Tên khách hàng</label>
               <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
             </div>
@@ -157,7 +177,7 @@ export default function CustomersPage() {
               <label>Số điện thoại</label>
               <input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
             </div>
-            <div className="form-row full-row">
+            <div className="form-row">
               <label>Địa chỉ</label>
               <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
             </div>
@@ -178,9 +198,9 @@ export default function CustomersPage() {
           <div className="panel-head">
             <div>
               <h2>Lịch sử mua hàng</h2>
-              <p>{selectedCustomer ? selectedCustomer.name : "Chọn một khách hàng để xem đơn đã mua."}</p>
+              <p>{selectedCustomer ? `${selectedCustomer.code ?? ""} ${selectedCustomer.name}` : "Chọn khách hàng để xem đơn đã mua."}</p>
             </div>
-            <History size={22} color="#ef233c" />
+            <History size={22} color="#0f766e" />
           </div>
 
           {!selectedCustomer ? (
@@ -224,7 +244,7 @@ export default function CustomersPage() {
             className="search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm tên, số điện thoại, địa chỉ..."
+            placeholder="Tìm mã, tên, số điện thoại..."
           />
         </div>
 
@@ -237,6 +257,7 @@ export default function CustomersPage() {
             <table>
               <thead>
                 <tr>
+                  <th>Mã</th>
                   <th>Tên</th>
                   <th>Số điện thoại</th>
                   <th>Địa chỉ</th>
@@ -247,6 +268,9 @@ export default function CustomersPage() {
               <tbody>
                 {filteredCustomers.map((customer) => (
                   <tr key={customer.id}>
+                    <td>
+                      <span className="badge">{customer.code || "-"}</span>
+                    </td>
                     <td>
                       <strong>{customer.name}</strong>
                     </td>

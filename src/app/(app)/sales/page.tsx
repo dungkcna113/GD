@@ -173,7 +173,7 @@ export default function SalesPage() {
               <h2>Đơn hàng mới</h2>
               <p>App không cho bán vượt số lượng tồn kho.</p>
             </div>
-            <ReceiptText size={24} color="#ef233c" />
+            <ReceiptText size={24} color="#0f766e" />
           </div>
 
           {message && <div className="message success">{message}</div>}

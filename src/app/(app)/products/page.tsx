@@ -1,7 +1,22 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit3, Hash, ImageIcon, PackagePlus, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Bold,
+  Code2,
+  Edit3,
+  Hash,
+  ImageIcon,
+  Italic,
+  ListFilter,
+  MoreHorizontal,
+  Plus,
+  Save,
+  Trash2,
+  Underline,
+  Upload,
+} from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { money, numberText, slugify } from "@/lib/format";
@@ -11,7 +26,10 @@ import type { Category, Product } from "@/lib/types";
 type ProductForm = {
   id?: string;
   sku: string;
+  barcode: string;
   name: string;
+  unit: string;
+  description: string;
   category_id: string;
   cost_price: string;
   sale_price: string;
@@ -23,7 +41,10 @@ type ProductForm = {
 
 const emptyForm: ProductForm = {
   sku: "",
+  barcode: "",
   name: "",
+  unit: "cái",
+  description: "",
   category_id: "",
   cost_price: "0",
   sale_price: "0",
@@ -46,63 +67,31 @@ const categoryPrefixes: Record<string, string> = {
   "dich-vu": "DV",
 };
 
-const sampleProducts = [
-  {
-    sku: "CPU-I5-4590",
-    name: "Intel Core i5-4590",
-    category_slug: "cpu",
-    cost_price: 350000,
-    sale_price: 450000,
-    stock_quantity: 10,
-    low_stock_threshold: 3,
-  },
-  {
-    sku: "RAM-KIN-8G-3200",
-    name: "RAM Kingston Fury Beast 8GB DDR4 3200",
-    category_slug: "ram",
-    cost_price: 350000,
-    sale_price: 450000,
-    stock_quantity: 15,
-    low_stock_threshold: 5,
-  },
-  {
-    sku: "SSD-KIN-A400-240",
-    name: "SSD Kingston A400 240GB SATA",
-    category_slug: "ssd",
-    cost_price: 330000,
-    sale_price: 420000,
-    stock_quantity: 12,
-    low_stock_threshold: 4,
-  },
-  {
-    sku: "VGA-ASUS-GTX1650-4G",
-    name: "VGA ASUS GTX 1650 4GB",
-    category_slug: "vga",
-    cost_price: 2450000,
-    sale_price: 2850000,
-    stock_quantity: 4,
-    low_stock_threshold: 2,
-  },
-];
-
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const filteredProducts = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return products;
-    return products.filter((item) =>
-      [item.sku, item.name, item.category_name].filter(Boolean).join(" ").toLowerCase().includes(keyword),
-    );
-  }, [products, search]);
+    return products.filter((item) => {
+      const matchesSearch =
+        !keyword ||
+        [item.sku, item.barcode, item.name, item.category_name].filter(Boolean).join(" ").toLowerCase().includes(keyword);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && item.is_active) ||
+        (statusFilter === "inactive" && !item.is_active) ||
+        (statusFilter === "low" && item.stock_quantity <= item.low_stock_threshold);
+      return matchesSearch && matchesStatus;
+    });
+  }, [products, search, statusFilter]);
 
   async function loadData() {
     setLoading(true);
@@ -134,7 +123,7 @@ export default function ProductsPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function generateSku() {
+  function buildSku() {
     const category = categories.find((item) => item.id === form.category_id);
     const prefix = category ? categoryPrefixes[category.slug] ?? category.slug.slice(0, 3).toUpperCase() : "SP";
     const namePart =
@@ -154,14 +143,27 @@ export default function ProductsPage() {
       counter += 1;
     }
 
-    setForm((current) => ({ ...current, sku: nextSku }));
+    return nextSku;
+  }
+
+  function generateSku() {
+    setForm((current) => ({ ...current, sku: buildSku() }));
+  }
+
+  function resetForm() {
+    setForm(emptyForm);
+    setMessage(null);
+    setError(null);
   }
 
   function editProduct(product: Product) {
     setForm({
       id: product.id,
       sku: product.sku,
+      barcode: product.barcode ?? "",
       name: product.name,
+      unit: product.unit ?? "cái",
+      description: product.description ?? "",
       category_id: product.category_id ?? "",
       cost_price: String(product.cost_price ?? 0),
       sale_price: String(product.sale_price ?? 0),
@@ -180,8 +182,11 @@ export default function ProductsPage() {
     setError(null);
 
     const payload = {
-      sku: form.sku.trim().toUpperCase(),
+      sku: (form.sku.trim() || buildSku()).toUpperCase(),
+      barcode: form.barcode.trim() || null,
       name: form.name.trim(),
+      unit: form.unit.trim() || "cái",
+      description: form.description.trim() || null,
       category_id: form.category_id || null,
       cost_price: Number(form.cost_price || 0),
       sale_price: Number(form.sale_price || 0),
@@ -206,39 +211,6 @@ export default function ProductsPage() {
     setSaving(false);
   }
 
-  async function addSampleProducts() {
-    setSeeding(true);
-    setMessage(null);
-    setError(null);
-
-    const categoryIds = new Map(categories.map((category) => [category.slug, category.id]));
-    const missingCategory = sampleProducts.find((product) => !categoryIds.get(product.category_slug));
-
-    if (missingCategory) {
-      setError("Thiếu danh mục mẫu. Hãy chạy lại file supabase/schema.sql trong Supabase SQL Editor trước.");
-      setSeeding(false);
-      return;
-    }
-
-    const payload = sampleProducts.map(({ category_slug, ...product }) => ({
-      ...product,
-      category_id: categoryIds.get(category_slug),
-      image_url: null,
-      is_active: true,
-    }));
-
-    const { error: upsertError } = await supabase.from("products").upsert(payload, { onConflict: "sku" });
-
-    if (upsertError) {
-      setError(upsertError.message);
-    } else {
-      setMessage("Đã thêm 4 sản phẩm mẫu có mã quản lý.");
-      await loadData();
-    }
-
-    setSeeding(false);
-  }
-
   async function deleteProduct(id: string) {
     if (!confirm("Xóa sản phẩm này? Nếu sản phẩm đã có đơn hàng, hãy chuyển sang ngừng bán thay vì xóa.")) return;
 
@@ -254,140 +226,214 @@ export default function ProductsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Sản phẩm"
-        description="Quản lý mã sản phẩm, giá nhập, giá bán, tồn kho và link ảnh sản phẩm."
-      >
-        <button className="soft-btn" onClick={addSampleProducts} disabled={seeding || loading}>
-          <PackagePlus size={18} />
-          {seeding ? "Đang thêm..." : "Thêm 4 sản phẩm mẫu"}
+      <PageHeader title={form.id ? "Sửa sản phẩm" : "Thêm sản phẩm"} description="Quản lý thông tin, giá bán, giá vốn và tồn kho.">
+        <button className="soft-btn" type="button" onClick={resetForm}>
+          <ArrowLeft size={17} />
+          Hủy
+        </button>
+        <button className="primary-btn" form="product-form" disabled={saving}>
+          <Save size={17} />
+          {saving ? "Đang lưu..." : form.id ? "Lưu sản phẩm" : "Thêm sản phẩm"}
         </button>
       </PageHeader>
 
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>{form.id ? "Sửa sản phẩm" : "Thêm sản phẩm"}</h2>
-            <p>Ảnh sản phẩm chỉ lưu link URL, không lưu file ảnh trong Supabase.</p>
-          </div>
-          {form.id && (
-            <button className="soft-btn compact" onClick={() => setForm(emptyForm)}>
-              <RotateCcw size={17} />
-              Nhập mới
-            </button>
-          )}
+      {message && <div className="message success">{message}</div>}
+      {error && <div className="message error">{error}</div>}
+
+      <form id="product-form" className="product-editor" onSubmit={handleSubmit}>
+        <div className="product-main">
+          <section className="sapo-card">
+            <div className="card-head">
+              <h2>Thông tin sản phẩm</h2>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-row full-row">
+                <label>Tên sản phẩm*</label>
+                <input
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  placeholder="Nhập tên sản phẩm"
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <label>Mã SKU</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    value={form.sku}
+                    onChange={(event) => updateField("sku", event.target.value)}
+                    placeholder="Tự tạo nếu để trống"
+                  />
+                  <button type="button" className="soft-btn compact" onClick={generateSku}>
+                    <Hash size={16} />
+                    Tạo mã
+                  </button>
+                </div>
+              </div>
+              <div className="form-row">
+                <label>Mã vạch / Barcode</label>
+                <input
+                  value={form.barcode}
+                  onChange={(event) => updateField("barcode", event.target.value)}
+                  placeholder="Nhập mã vạch nếu có"
+                />
+              </div>
+              <div className="form-row">
+                <label>Đơn vị tính</label>
+                <input value={form.unit} onChange={(event) => updateField("unit", event.target.value)} placeholder="cái" />
+              </div>
+              <div className="form-row full-row">
+                <label>Mô tả</label>
+                <div className="editor-box">
+                  <div className="editor-toolbar">
+                    <Bold size={16} />
+                    <Italic size={16} />
+                    <Underline size={16} />
+                    <ImageIcon size={16} />
+                    <Code2 size={16} />
+                    <MoreHorizontal size={16} />
+                  </div>
+                  <textarea
+                    className="editor-textarea"
+                    value={form.description}
+                    onChange={(event) => updateField("description", event.target.value)}
+                    placeholder="Nhập mô tả sản phẩm"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="sapo-card">
+            <div className="card-head">
+              <h2>Thông tin giá</h2>
+            </div>
+            <div className="form-grid">
+              <div className="form-row">
+                <label>Giá bán</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.sale_price}
+                  onChange={(event) => updateField("sale_price", event.target.value)}
+                />
+              </div>
+              <div className="form-row">
+                <label>Giá vốn</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.cost_price}
+                  onChange={(event) => updateField("cost_price", event.target.value)}
+                />
+              </div>
+              <div className="form-row">
+                <label>Tồn kho ban đầu</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.stock_quantity}
+                  onChange={(event) => updateField("stock_quantity", event.target.value)}
+                />
+              </div>
+              <div className="form-row">
+                <label>Ngưỡng tồn thấp</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.low_stock_threshold}
+                  onChange={(event) => updateField("low_stock_threshold", event.target.value)}
+                />
+              </div>
+            </div>
+          </section>
         </div>
 
-        {message && <div className="message success">{message}</div>}
-        {error && <div className="message error">{error}</div>}
-
-        <form className="form-grid" onSubmit={handleSubmit}>
-          <div className="form-row">
-            <label>Mã sản phẩm</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={form.sku} onChange={(event) => updateField("sku", event.target.value)} required />
-              <button type="button" className="soft-btn compact" onClick={generateSku}>
-                <Hash size={16} />
-                Tạo mã
-              </button>
+        <aside className="side-stack">
+          <section className="sapo-card">
+            <div className="card-head">
+              <h2>Ảnh sản phẩm</h2>
             </div>
-          </div>
-          <div className="form-row">
-            <label>Tên sản phẩm</label>
-            <input value={form.name} onChange={(event) => updateField("name", event.target.value)} required />
-          </div>
-          <div className="form-row">
-            <label>Danh mục</label>
-            <select value={form.category_id} onChange={(event) => updateField("category_id", event.target.value)}>
-              <option value="">Chưa chọn</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-row">
-            <label>Link ảnh</label>
-            <input
-              value={form.image_url}
-              onChange={(event) => updateField("image_url", event.target.value)}
-              placeholder="https://..."
-            />
-            <span className="field-hint">Có thể để trống để tiết kiệm dung lượng.</span>
-          </div>
-          <div className="form-row">
-            <label>Giá nhập</label>
-            <input
-              type="number"
-              min="0"
-              value={form.cost_price}
-              onChange={(event) => updateField("cost_price", event.target.value)}
-            />
-          </div>
-          <div className="form-row">
-            <label>Giá bán</label>
-            <input
-              type="number"
-              min="0"
-              value={form.sale_price}
-              onChange={(event) => updateField("sale_price", event.target.value)}
-            />
-          </div>
-          <div className="form-row">
-            <label>Tồn kho</label>
-            <input
-              type="number"
-              min="0"
-              value={form.stock_quantity}
-              onChange={(event) => updateField("stock_quantity", event.target.value)}
-            />
-          </div>
-          <div className="form-row">
-            <label>Ngưỡng tồn thấp</label>
-            <input
-              type="number"
-              min="0"
-              value={form.low_stock_threshold}
-              onChange={(event) => updateField("low_stock_threshold", event.target.value)}
-            />
-          </div>
-          <div className="form-row full-row">
-            <label>
+            <div className="image-drop">
+              <div>
+                <Upload size={24} />
+                <strong>Thêm ảnh từ URL</strong>
+                <p className="muted">Không lưu file ảnh trong database.</p>
+              </div>
+            </div>
+            <div className="form-row" style={{ marginTop: 12 }}>
+              <label>Link ảnh</label>
               <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(event) => updateField("is_active", event.target.checked)}
-                style={{ width: 16, minHeight: 16, marginRight: 8 }}
+                value={form.image_url}
+                onChange={(event) => updateField("image_url", event.target.value)}
+                placeholder="https://..."
               />
-              Đang kinh doanh
-            </label>
-          </div>
-          <div className="button-row full-row">
-            <button className="primary-btn" disabled={saving}>
-              {form.id ? <Save size={18} /> : <Plus size={18} />}
-              {saving ? "Đang lưu..." : form.id ? "Lưu thay đổi" : "Thêm sản phẩm"}
-            </button>
-          </div>
-        </form>
-      </section>
+            </div>
+          </section>
 
-      <section className="panel" style={{ marginTop: 14 }}>
-        <div className="toolbar">
+          <section className="sapo-card">
+            <div className="card-head">
+              <h2>Phân loại</h2>
+            </div>
+            <div className="form-row">
+              <label>Danh mục</label>
+              <select value={form.category_id} onChange={(event) => updateField("category_id", event.target.value)}>
+                <option value="">Chọn danh mục</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-row" style={{ marginTop: 12 }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(event) => updateField("is_active", event.target.checked)}
+                  style={{ width: 16, minHeight: 16, marginRight: 8 }}
+                />
+                Đang kinh doanh
+              </label>
+            </div>
+          </section>
+        </aside>
+      </form>
+
+      <section className="table-panel" style={{ marginTop: 16 }}>
+        <div className="list-head" style={{ padding: "16px 20px" }}>
           <div>
-            <h2>Danh sách sản phẩm</h2>
-            <p className="muted">{numberText(filteredProducts.length)} sản phẩm</p>
+            <h2 style={{ margin: 0 }}>Danh sách sản phẩm</h2>
+            <p className="muted" style={{ margin: "4px 0 0" }}>
+              {numberText(filteredProducts.length)} sản phẩm
+            </p>
           </div>
+          <button className="soft-btn compact" type="button">
+            <ListFilter size={16} />
+            Bộ lọc khác
+          </button>
+        </div>
+        <div className="filter-row">
           <input
             className="search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm mã, tên, danh mục..."
+            placeholder="Tìm theo mã SKU, tên sản phẩm, barcode"
           />
+          <select className="filter-control" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang kinh doanh</option>
+            <option value="inactive">Ngừng bán</option>
+            <option value="low">Tồn kho thấp</option>
+          </select>
         </div>
 
         {loading ? (
-          <div className="message">Đang tải sản phẩm...</div>
+          <div className="message" style={{ margin: 20 }}>
+            Đang tải sản phẩm...
+          </div>
         ) : filteredProducts.length === 0 ? (
           <EmptyState title="Chưa có sản phẩm" description="Thêm sản phẩm để bắt đầu nhập kho và bán hàng." />
         ) : (
@@ -396,9 +442,12 @@ export default function ProductsPage() {
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
+                  <th>SKU</th>
+                  <th>Barcode</th>
+                  <th>Đơn vị</th>
                   <th>Danh mục</th>
-                  <th>Giá nhập</th>
                   <th>Giá bán</th>
+                  <th>Giá vốn</th>
                   <th>Tồn kho</th>
                   <th>Trạng thái</th>
                   <th></th>
@@ -410,21 +459,20 @@ export default function ProductsPage() {
                     <td>
                       <div className="product-cell">
                         <div className="product-thumb">
-                          {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} />
-                          ) : (
-                            <ImageIcon size={18} />
-                          )}
+                          {product.image_url ? <img src={product.image_url} alt={product.name} /> : <ImageIcon size={18} />}
                         </div>
                         <div className="product-meta">
                           <strong>{product.name}</strong>
-                          <span>{product.sku}</span>
+                          <span>{product.description || "Chưa có mô tả"}</span>
                         </div>
                       </div>
                     </td>
+                    <td>{product.sku}</td>
+                    <td>{product.barcode || "-"}</td>
+                    <td>{product.unit || "cái"}</td>
                     <td>{product.category_name || "-"}</td>
-                    <td>{money(product.cost_price)}</td>
                     <td>{money(product.sale_price)}</td>
+                    <td>{money(product.cost_price)}</td>
                     <td>
                       <span className={product.stock_quantity <= product.low_stock_threshold ? "badge warn" : "badge ok"}>
                         {numberText(product.stock_quantity)}
@@ -437,11 +485,11 @@ export default function ProductsPage() {
                     </td>
                     <td>
                       <div className="table-actions">
-                        <button className="soft-btn compact" onClick={() => editProduct(product)}>
+                        <button className="soft-btn compact" type="button" onClick={() => editProduct(product)}>
                           <Edit3 size={16} />
                           Sửa
                         </button>
-                        <button className="danger-btn compact" onClick={() => deleteProduct(product.id)}>
+                        <button className="danger-btn compact" type="button" onClick={() => deleteProduct(product.id)}>
                           <Trash2 size={16} />
                           Xóa
                         </button>

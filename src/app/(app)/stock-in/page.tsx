@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { PackagePlus, Plus, Trash2 } from "lucide-react";
+import { Download, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { dateText, money, numberText, todayInputValue } from "@/lib/format";
@@ -124,9 +125,17 @@ export default function StockInPage() {
   return (
     <>
       <PageHeader
-        title="Nhập kho"
+        title="Danh sách đơn nhập hàng"
         description="Tạo phiếu nhập, tự tính thành tiền và tăng tồn kho sản phẩm."
-      />
+      >
+        <button className="soft-btn" type="button">
+          <Download size={17} />
+          Xuất file
+        </button>
+        <Link href="/inventory" className="soft-btn">
+          Tồn kho
+        </Link>
+      </PageHeader>
 
       <section className="split-layout">
         <form className="panel" onSubmit={handleSubmit}>
@@ -135,7 +144,7 @@ export default function StockInPage() {
               <h2>Phiếu nhập mới</h2>
               <p>Giá nhập mới sẽ cập nhật vào giá vốn hiện tại của sản phẩm.</p>
             </div>
-            <PackagePlus size={24} color="#ef233c" />
+            <PackagePlus size={24} color="#0b84ff" />
           </div>
 
           {message && <div className="message success">{message}</div>}
@@ -251,6 +260,7 @@ export default function StockInPage() {
               <table>
                 <thead>
                   <tr>
+                    <th>Mã phiếu</th>
                     <th>Ngày</th>
                     <th>Nhà cung cấp</th>
                     <th>Tổng tiền</th>
@@ -259,6 +269,7 @@ export default function StockInPage() {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id}>
+                      <td className="link-blue">{order.code || "-"}</td>
                       <td>{dateText(order.purchase_date)}</td>
                       <td>{order.suppliers?.name || "Chưa chọn"}</td>
                       <td>{money(order.total_amount)}</td>

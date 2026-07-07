@@ -97,8 +97,8 @@ export default function DashboardPage() {
               <h2>Đơn hàng mới</h2>
               <p>Các đơn bán gần nhất trong cửa hàng.</p>
             </div>
-            <Link href="/reports" className="soft-btn compact">
-              Xem báo cáo
+            <Link href="/orders" className="soft-btn compact">
+              Xem đơn hàng
             </Link>
           </div>
 

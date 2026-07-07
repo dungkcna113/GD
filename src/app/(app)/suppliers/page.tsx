@@ -4,12 +4,14 @@ import { FormEvent, useEffect, useState } from "react";
 import { Edit3, History, Plus, RotateCcw, Save, Trash2, Truck } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { nextCode } from "@/lib/codes";
 import { dateText, money } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { PurchaseOrder, Supplier } from "@/lib/types";
 
 type SupplierForm = {
   id?: string;
+  code: string;
   name: string;
   phone: string;
   email: string;
@@ -18,6 +20,7 @@ type SupplierForm = {
 };
 
 const emptyForm: SupplierForm = {
+  code: "",
   name: "",
   phone: "",
   email: "",
@@ -37,7 +40,10 @@ export default function SuppliersPage() {
 
   async function loadSuppliers() {
     setLoading(true);
-    const { data, error: loadError } = await supabase.from("suppliers").select("*").order("created_at", { ascending: false });
+    const { data, error: loadError } = await supabase
+      .from("suppliers")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (loadError) setError(loadError.message);
     setSuppliers((data as Supplier[]) ?? []);
     setLoading(false);
@@ -67,6 +73,7 @@ export default function SuppliersPage() {
   function editSupplier(supplier: Supplier) {
     setForm({
       id: supplier.id,
+      code: supplier.code ?? "",
       name: supplier.name,
       phone: supplier.phone ?? "",
       email: supplier.email ?? "",
@@ -83,6 +90,7 @@ export default function SuppliersPage() {
     setError(null);
 
     const payload = {
+      code: (form.code.trim() || nextCode("NCC", suppliers.map((supplier) => supplier.code))).toUpperCase(),
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
@@ -122,14 +130,14 @@ export default function SuppliersPage() {
 
   return (
     <>
-      <PageHeader title="Nhà cung cấp" description="Quản lý nơi nhập CPU, RAM, SSD, VGA và các linh kiện khác." />
+      <PageHeader title="Nhà cung cấp" description="Quản lý mã nhà cung cấp, thông tin liên hệ và lịch sử nhập hàng." />
 
       <section className="split-layout">
         <div className="panel">
           <div className="panel-head">
             <div>
               <h2>{form.id ? "Sửa nhà cung cấp" : "Thêm nhà cung cấp"}</h2>
-              <p>Thông tin này dùng khi lập phiếu nhập kho.</p>
+              <p>Mã nhà cung cấp sẽ tự tạo dạng NCC-000001 nếu bạn để trống.</p>
             </div>
             {form.id && (
               <button className="soft-btn compact" onClick={() => setForm(emptyForm)}>
@@ -144,6 +152,14 @@ export default function SuppliersPage() {
 
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-row">
+              <label>Mã nhà cung cấp</label>
+              <input
+                value={form.code}
+                onChange={(event) => setForm({ ...form, code: event.target.value })}
+                placeholder="Tự tạo nếu để trống"
+              />
+            </div>
+            <div className="form-row">
               <label>Tên nhà cung cấp</label>
               <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
             </div>
@@ -155,7 +171,7 @@ export default function SuppliersPage() {
               <label>Email</label>
               <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
             </div>
-            <div className="form-row">
+            <div className="form-row full-row">
               <label>Địa chỉ</label>
               <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
             </div>
@@ -176,9 +192,9 @@ export default function SuppliersPage() {
           <div className="panel-head">
             <div>
               <h2>Lịch sử nhập</h2>
-              <p>{selectedSupplier ? selectedSupplier.name : "Chọn nhà cung cấp để xem phiếu nhập."}</p>
+              <p>{selectedSupplier ? `${selectedSupplier.code ?? ""} ${selectedSupplier.name}` : "Chọn nhà cung cấp để xem phiếu nhập."}</p>
             </div>
-            <Truck size={22} color="#ef233c" />
+            <Truck size={22} color="#0f766e" />
           </div>
 
           {!selectedSupplier ? (
@@ -190,6 +206,7 @@ export default function SuppliersPage() {
               <table>
                 <thead>
                   <tr>
+                    <th>Mã phiếu</th>
                     <th>Ngày nhập</th>
                     <th>Tổng tiền</th>
                     <th>Ghi chú</th>
@@ -198,6 +215,7 @@ export default function SuppliersPage() {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id}>
+                      <td>{order.code || "-"}</td>
                       <td>{dateText(order.purchase_date)}</td>
                       <td>{money(order.total_amount)}</td>
                       <td>{order.note || "-"}</td>
@@ -227,6 +245,7 @@ export default function SuppliersPage() {
             <table>
               <thead>
                 <tr>
+                  <th>Mã</th>
                   <th>Tên</th>
                   <th>Số điện thoại</th>
                   <th>Email</th>
@@ -237,6 +256,9 @@ export default function SuppliersPage() {
               <tbody>
                 {suppliers.map((supplier) => (
                   <tr key={supplier.id}>
+                    <td>
+                      <span className="badge">{supplier.code || "-"}</span>
+                    </td>
                     <td>
                       <strong>{supplier.name}</strong>
                     </td>
